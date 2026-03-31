@@ -28,8 +28,9 @@ def health() -> dict:
 
 
 @app.post("/reset")
-def reset_endpoint(request: ResetRequest) -> dict:
-    result = env.reset(task_id=request.task_id)
+def reset_endpoint(request: Optional[ResetRequest] = None) -> dict:
+    task_id = request.task_id if request is not None else None
+    result = env.reset(task_id=task_id)
     return result.model_dump(mode="json")
 
 
