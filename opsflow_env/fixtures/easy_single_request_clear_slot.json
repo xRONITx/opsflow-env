@@ -1,0 +1,87 @@
+{
+  "task_id": "easy_single_request_clear_slot",
+  "difficulty": "easy",
+  "objective": "Resolve the single actionable scheduling request and book the correct conflict-free launch blockers sync.",
+  "max_steps": 8,
+  "participants": {
+    "riya": "Asia/Calcutta",
+    "aman": "Asia/Calcutta"
+  },
+  "inbox_threads": [
+    {
+      "thread_id": "t_easy_1",
+      "subject": "Launch blockers sync tomorrow afternoon",
+      "sender": "meera@acme.example",
+      "received_at": "2026-04-01T09:10:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "high",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "meera@acme.example",
+          "sent_at": "2026-04-01T09:10:00+05:30",
+          "body": "Please set up a 30-minute sync tomorrow afternoon with Riya and Aman to review launch blockers. High priority."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_easy_2",
+      "subject": "Weekly newsletter",
+      "sender": "news@acme.example",
+      "received_at": "2026-04-01T08:00:00+05:30",
+      "category": "informational",
+      "suggested_priority": "low",
+      "actionable": false,
+      "messages": [
+        {
+          "sender": "news@acme.example",
+          "sent_at": "2026-04-01T08:00:00+05:30",
+          "body": "Weekly company updates."
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "riya": [
+      {
+        "event_id": "riya_focus_1",
+        "title": "Focus Block",
+        "start": "2026-04-02T14:00:00+05:30",
+        "end": "2026-04-02T14:30:00+05:30",
+        "priority": "medium",
+        "protected": false,
+        "attendees": ["riya"]
+      }
+    ],
+    "aman": [
+      {
+        "event_id": "aman_1on1",
+        "title": "1:1",
+        "start": "2026-04-02T14:00:00+05:30",
+        "end": "2026-04-02T14:30:00+05:30",
+        "priority": "medium",
+        "protected": false,
+        "attendees": ["aman"]
+      }
+    ]
+  },
+  "gold_constraints": {
+    "request_type": "schedule_meeting",
+    "attendees": ["riya", "aman"],
+    "duration_minutes": 30,
+    "preferred_dates": ["2026-04-02"],
+    "preferred_time_ranges": ["afternoon"],
+    "timezone": "Asia/Calcutta",
+    "priority": "high",
+    "deadline": null,
+    "missing_fields": []
+  },
+  "expected_outcome": {
+    "thread_id": "t_easy_1",
+    "final_resolution": "book_meeting",
+    "proposed_start": "2026-04-02T15:00:00+05:30"
+  },
+  "policies": {
+    "non_movable_priorities": ["critical"]
+  }
+}

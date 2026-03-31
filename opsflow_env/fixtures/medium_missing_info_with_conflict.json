@@ -1,0 +1,86 @@
+{
+  "task_id": "medium_missing_info_with_conflict",
+  "difficulty": "medium",
+  "objective": "Handle the meeting request safely when a conflict exists and the duration is missing.",
+  "max_steps": 10,
+  "participants": {
+    "priya": "Asia/Calcutta",
+    "karan": "Asia/Calcutta"
+  },
+  "inbox_threads": [
+    {
+      "thread_id": "t_medium_1",
+      "subject": "Can you schedule tomorrow morning?",
+      "sender": "nina@acme.example",
+      "received_at": "2026-04-03T16:20:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "medium",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "nina@acme.example",
+          "sent_at": "2026-04-03T16:20:00+05:30",
+          "body": "Can you schedule a review with Priya and Karan tomorrow morning? Please try 10am if possible."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_medium_2",
+      "subject": "Office pantry restock",
+      "sender": "facilities@acme.example",
+      "received_at": "2026-04-03T10:00:00+05:30",
+      "category": "informational",
+      "suggested_priority": "low",
+      "actionable": false,
+      "messages": [
+        {
+          "sender": "facilities@acme.example",
+          "sent_at": "2026-04-03T10:00:00+05:30",
+          "body": "Pantry will be restocked at 6pm."
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "priya": [
+      {
+        "event_id": "priya_customer_call",
+        "title": "Customer Call",
+        "start": "2026-04-04T10:00:00+05:30",
+        "end": "2026-04-04T10:30:00+05:30",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["priya"]
+      }
+    ],
+    "karan": [
+      {
+        "event_id": "karan_focus",
+        "title": "Focus Time",
+        "start": "2026-04-04T10:00:00+05:30",
+        "end": "2026-04-04T10:30:00+05:30",
+        "priority": "medium",
+        "protected": false,
+        "attendees": ["karan"]
+      }
+    ]
+  },
+  "gold_constraints": {
+    "request_type": "schedule_meeting",
+    "attendees": ["priya", "karan"],
+    "duration_minutes": null,
+    "preferred_dates": ["2026-04-04"],
+    "preferred_time_ranges": ["morning"],
+    "timezone": "Asia/Calcutta",
+    "priority": "medium",
+    "deadline": null,
+    "missing_fields": ["duration_minutes"]
+  },
+  "expected_outcome": {
+    "thread_id": "t_medium_1",
+    "final_resolution": "ask_for_missing_info"
+  },
+  "policies": {
+    "non_movable_priorities": ["critical", "high"]
+  }
+}

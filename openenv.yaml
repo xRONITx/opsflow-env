@@ -1,0 +1,36 @@
+name: opsflow-env
+version: 0.1.0
+description: >
+  Operations Inbox and Scheduling Assistant environment for OpenEnv. Agents
+  triage inbox threads, extract scheduling constraints, inspect calendars, and
+  resolve meeting requests under deterministic policy rules.
+entrypoint:
+  type: http
+  app: app:app
+environment:
+  python: "3.11"
+  dockerfile: Dockerfile
+api:
+  reset:
+    method: POST
+    path: /reset
+  step:
+    method: POST
+    path: /step
+  state:
+    method: GET
+    path: /state
+tasks:
+  - id: easy_single_request_clear_slot
+    difficulty: easy
+  - id: medium_missing_info_with_conflict
+    difficulty: medium
+  - id: hard_priority_conflict_timezone
+    difficulty: hard
+metadata:
+  domain: operations
+  tags:
+    - openenv
+    - inbox-triage
+    - scheduling
+    - deterministic-graders

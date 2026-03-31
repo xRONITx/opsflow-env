@@ -1,0 +1,105 @@
+{
+  "task_id": "hard_priority_conflict_timezone",
+  "difficulty": "hard",
+  "objective": "Resolve the urgent APAC launch-readiness request while respecting protected events, timezones, and policy constraints.",
+  "max_steps": 12,
+  "participants": {
+    "vp_lex": "Asia/Singapore",
+    "maya_ops": "Asia/Calcutta",
+    "jun_pm": "Asia/Singapore"
+  },
+  "inbox_threads": [
+    {
+      "thread_id": "t_hard_1",
+      "subject": "Urgent: launch-readiness sync before tomorrow",
+      "sender": "jun.pm@acme.example",
+      "received_at": "2026-04-06T18:15:00+08:00",
+      "category": "meeting_request",
+      "suggested_priority": "high",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "jun.pm@acme.example",
+          "sent_at": "2026-04-06T18:15:00+08:00",
+          "body": "Need a 30-minute launch-readiness sync with VP Lex and Maya Ops before tomorrow noon Singapore time. Please prioritize this."
+        },
+        {
+          "sender": "chief.of.staff@acme.example",
+          "sent_at": "2026-04-06T18:19:00+08:00",
+          "body": "Reminder: VP Lex board prep blocks are protected and should not be moved automatically."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_hard_2",
+      "subject": "Travel receipt reminder",
+      "sender": "finance@acme.example",
+      "received_at": "2026-04-06T12:00:00+05:30",
+      "category": "informational",
+      "suggested_priority": "low",
+      "actionable": false,
+      "messages": [
+        {
+          "sender": "finance@acme.example",
+          "sent_at": "2026-04-06T12:00:00+05:30",
+          "body": "Please upload missing receipts."
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "vp_lex": [
+      {
+        "event_id": "vp_board_prep",
+        "title": "Board Prep",
+        "start": "2026-04-07T09:00:00+08:00",
+        "end": "2026-04-07T10:00:00+08:00",
+        "priority": "critical",
+        "protected": true,
+        "attendees": ["vp_lex"]
+      }
+    ],
+    "maya_ops": [
+      {
+        "event_id": "maya_customer_review",
+        "title": "Customer Review",
+        "start": "2026-04-07T08:00:00+05:30",
+        "end": "2026-04-07T08:30:00+05:30",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["maya_ops"]
+      }
+    ],
+    "jun_pm": [
+      {
+        "event_id": "jun_team_sync",
+        "title": "Team Sync",
+        "start": "2026-04-07T09:00:00+08:00",
+        "end": "2026-04-07T09:30:00+08:00",
+        "priority": "medium",
+        "protected": false,
+        "attendees": ["jun_pm"]
+      }
+    ]
+  },
+  "gold_constraints": {
+    "request_type": "schedule_meeting",
+    "attendees": ["vp_lex", "maya_ops", "jun_pm"],
+    "duration_minutes": 30,
+    "preferred_dates": ["2026-04-07"],
+    "preferred_time_ranges": ["before_noon_singapore"],
+    "timezone": "Asia/Singapore",
+    "priority": "high",
+    "deadline": "2026-04-07T12:00:00+08:00",
+    "missing_fields": []
+  },
+  "expected_outcome": {
+    "thread_id": "t_hard_1",
+    "final_resolution": "book_meeting",
+    "proposed_start": "2026-04-07T11:00:00+08:00",
+    "required_calendar_views": ["jun_pm", "maya_ops", "vp_lex"]
+  },
+  "policies": {
+    "non_movable_priorities": ["critical", "high"]
+  }
+}
