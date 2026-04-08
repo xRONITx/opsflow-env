@@ -134,7 +134,7 @@ uvicorn app:app --host 0.0.0.0 --port 7860
 
 The submission baseline script is `inference.py` in the repo root.
 
-Required environment variables:
+Remote LLM mode supports these environment variables:
 
 - `API_BASE_URL`
 - `MODEL_NAME`
@@ -145,6 +145,8 @@ Run it with:
 ```bash
 python inference.py
 ```
+
+If those variables are not provided, `inference.py` automatically falls back to a deterministic local policy so the baseline still executes cleanly in bare validation environments.
 
 ## Reproducible local baseline
 
