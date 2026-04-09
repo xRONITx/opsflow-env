@@ -1,12 +1,7 @@
 ---
 title: OpsFlowEnv
-emoji: "📬"
-colorFrom: blue
-colorTo: green
 sdk: docker
 app_port: 7860
-fullWidth: true
-header: default
 short_description: OpenEnv benchmark for ops inbox triage and scheduling.
 ---
 
@@ -202,7 +197,7 @@ docker run -p 7860:7860 opsflow-env
 Before submission:
 
 ```bash
-openenv validate
+python -m openenv.cli validate
 docker build .
 curl -X POST http://localhost:7860/reset -H "Content-Type: application/json" -d "{}"
 python inference.py
