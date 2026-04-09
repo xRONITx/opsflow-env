@@ -17,7 +17,7 @@ def run(command: list[str]) -> None:
 def main() -> None:
     run([sys.executable, "-m", "py_compile", "app.py", "inference.py", "server/app.py", "opsflow_env/env.py"])
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests"])
-    run(["openenv", "validate"])
+    run([sys.executable, "-m", "openenv.cli", "validate"])
     print("\nLocal smoke checks passed.")
 
 

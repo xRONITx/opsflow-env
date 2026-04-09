@@ -22,6 +22,15 @@ env = OpsFlowEnv()
 app = FastAPI(title="OpsFlowEnv", version="0.1.0")
 
 
+@app.get("/")
+def root() -> dict:
+    return {
+        "status": "ok",
+        "message": "OpsFlowEnv is running",
+        "endpoints": ["/reset", "/step", "/state", "/health"],
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}

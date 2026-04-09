@@ -167,9 +167,9 @@ def heuristic_action(observation: dict[str, Any]) -> OpsFlowAction:
 def choose_action(
     client: Any,
     observation: dict[str, Any],
-) -> tuple[OpsFlowAction, str]:
+) -> tuple[OpsFlowAction, str, Any]:
     if client is None or not API_KEY:
-        return heuristic_action(observation), "heuristic"
+        return heuristic_action(observation), "heuristic", None
 
     try:
         completion = client.chat.completions.create(
@@ -182,10 +182,10 @@ def choose_action(
             max_tokens=250,
         )
         response_text = completion.choices[0].message.content or "{}"
-        return parse_action(response_text, observation), "llm"
+        return parse_action(response_text, observation), "llm", client
     except Exception as exc:
-        print(f"LLM call failed, falling back to deterministic policy: {exc}")
-        return heuristic_action(observation), "heuristic"
+        print(f"LLM call failed, switching to deterministic policy: {exc}")
+        return heuristic_action(observation), "heuristic", None
 
 
 def main() -> None:
@@ -197,6 +197,7 @@ def main() -> None:
     task_ids = [task.task_id for task in env.available_tasks()]
     total_score = 0.0
     used_heuristic = client is None
+    task_scores: dict[str, float] = {}
 
     for task_id in task_ids:
         result = env.reset(task_id=task_id)
@@ -207,7 +208,7 @@ def main() -> None:
                 break
 
             observation = result.observation.model_dump(mode="json")
-            action, source = choose_action(client, observation)
+            action, source, client = choose_action(client, observation)
             used_heuristic = used_heuristic or source == "heuristic"
             print(f"Action ({source}) -> {action.model_dump(exclude_none=True)}")
             result = env.step(action)
@@ -218,15 +219,18 @@ def main() -> None:
 
         task_score = float(result.info.get("score", 0.0))
         total_score += task_score
+        task_scores[task_id] = round(task_score, 3)
         print(f"Final score for {task_id}: {task_score:.2f}")
 
     average = total_score / max(len(task_ids), 1)
     summary = {
         "task_count": len(task_ids),
+        "task_scores": task_scores,
         "average_score": round(average, 3),
         "mode": "heuristic_fallback" if used_heuristic else "llm",
     }
     print(f"\nAverage score across {len(task_ids)} tasks: {average:.2f}")
+    print(json.dumps(summary, indent=2))
     if RESULTS_PATH:
         with open(RESULTS_PATH, "w", encoding="utf-8") as output_file:
             json.dump(summary, output_file, indent=2)
