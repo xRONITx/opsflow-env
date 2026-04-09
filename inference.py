@@ -14,11 +14,7 @@ from opsflow_env.models import OpsFlowAction
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "deepseek-ai/DeepSeek-V3-0324")
-API_KEY = (
-    os.getenv("HF_TOKEN")
-    or os.getenv("OPENAI_API_KEY")
-    or os.getenv("API_KEY", "")
-)
+HF_TOKEN = os.getenv("HF_TOKEN")
 MAX_STEPS = 12
 RESULTS_PATH = os.getenv("BASELINE_RESULTS_PATH", "")
 
@@ -168,7 +164,7 @@ def choose_action(
     client: Any,
     observation: dict[str, Any],
 ) -> tuple[OpsFlowAction, str, Any]:
-    if client is None or not API_KEY:
+    if client is None or not HF_TOKEN:
         return heuristic_action(observation), "heuristic", None
 
     try:
@@ -183,15 +179,36 @@ def choose_action(
         )
         response_text = completion.choices[0].message.content or "{}"
         return parse_action(response_text, observation), "llm", client
-    except Exception as exc:
-        print(f"LLM call failed, switching to deterministic policy: {exc}")
+    except Exception:
         return heuristic_action(observation), "heuristic", None
 
 
+def log_start(task_id: str, mode: str) -> None:
+    print(f"[START] task_id={task_id} mode={mode}")
+
+
+def log_step(
+    task_id: str,
+    step_index: int,
+    source: str,
+    action: OpsFlowAction,
+    reward: float,
+    done: bool,
+    score: float,
+) -> None:
+    payload = json.dumps(action.model_dump(exclude_none=True), sort_keys=True)
+    print(
+        f"[STEP] task_id={task_id} step={step_index} source={source} "
+        f"reward={reward:.2f} done={str(done).lower()} score={score:.2f} action={payload}"
+    )
+
+
+def log_end(task_id: str, score: float, mode: str) -> None:
+    print(f"[END] task_id={task_id} score={score:.2f} mode={mode}")
+
+
 def main() -> None:
-    if API_KEY and OpenAI is None:
-        print("OpenAI package is unavailable, falling back to deterministic policy.")
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if API_KEY and OpenAI is not None else None
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN and OpenAI is not None else None
     env = OpsFlowEnv()
 
     task_ids = [task.task_id for task in env.available_tasks()]
@@ -201,26 +218,32 @@ def main() -> None:
 
     for task_id in task_ids:
         result = env.reset(task_id=task_id)
-        print(f"\n=== Running task: {task_id} ===")
+        initial_mode = "llm" if client is not None else "heuristic"
+        log_start(task_id, initial_mode)
 
-        for _ in range(MAX_STEPS):
+        for step_index in range(1, MAX_STEPS + 1):
             if result.done:
                 break
 
             observation = result.observation.model_dump(mode="json")
             action, source, client = choose_action(client, observation)
             used_heuristic = used_heuristic or source == "heuristic"
-            print(f"Action ({source}) -> {action.model_dump(exclude_none=True)}")
             result = env.step(action)
-            print(
-                f"Reward={result.reward:.2f} Done={result.done} "
-                f"Score={result.info.get('score', 0.0):.2f}"
+            log_step(
+                task_id=task_id,
+                step_index=step_index,
+                source=source,
+                action=action,
+                reward=result.reward,
+                done=result.done,
+                score=float(result.info.get("score", 0.0)),
             )
 
         task_score = float(result.info.get("score", 0.0))
         total_score += task_score
         task_scores[task_id] = round(task_score, 3)
-        print(f"Final score for {task_id}: {task_score:.2f}")
+        final_mode = "heuristic" if used_heuristic else "llm"
+        log_end(task_id, task_score, final_mode)
 
     average = total_score / max(len(task_ids), 1)
     summary = {
@@ -229,12 +252,9 @@ def main() -> None:
         "average_score": round(average, 3),
         "mode": "heuristic_fallback" if used_heuristic else "llm",
     }
-    print(f"\nAverage score across {len(task_ids)} tasks: {average:.2f}")
-    print(json.dumps(summary, indent=2))
     if RESULTS_PATH:
         with open(RESULTS_PATH, "w", encoding="utf-8") as output_file:
             json.dump(summary, output_file, indent=2)
-        print(f"Wrote summary to {RESULTS_PATH}")
 
 
 if __name__ == "__main__":
