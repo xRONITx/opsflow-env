@@ -1,8 +1,9 @@
 {
   "task_id": "medium_missing_info_with_conflict",
   "difficulty": "medium",
-  "objective": "Handle the meeting request safely when a conflict exists and the duration is missing.",
+  "objective": "Request the missing information, use the follow-up reply, and book the safest available review slot.",
   "max_steps": 10,
+  "ideal_steps": 8,
   "participants": {
     "priya": "Asia/Calcutta",
     "karan": "Asia/Calcutta"
@@ -10,7 +11,7 @@
   "inbox_threads": [
     {
       "thread_id": "t_medium_1",
-      "subject": "Can you schedule tomorrow morning?",
+      "subject": "Review on 2026-04-04?",
       "sender": "nina@acme.example",
       "received_at": "2026-04-03T16:20:00+05:30",
       "category": "meeting_request",
@@ -20,13 +21,13 @@
         {
           "sender": "nina@acme.example",
           "sent_at": "2026-04-03T16:20:00+05:30",
-          "body": "Can you schedule a review with Priya and Karan tomorrow morning? Please try 10am if possible."
+          "body": "Can you schedule a review with Priya and Karan on 2026-04-04? Please try 10:00 first if possible, otherwise late morning is okay."
         }
       ]
     },
     {
       "thread_id": "t_medium_2",
-      "subject": "Office pantry restock",
+      "subject": "Pantry restock update",
       "sender": "facilities@acme.example",
       "received_at": "2026-04-03T10:00:00+05:30",
       "category": "informational",
@@ -68,19 +69,31 @@
   "gold_constraints": {
     "request_type": "schedule_meeting",
     "attendees": ["priya", "karan"],
-    "duration_minutes": null,
+    "duration_minutes": 30,
     "preferred_dates": ["2026-04-04"],
-    "preferred_time_ranges": ["morning"],
+    "preferred_time_ranges": ["10:00", "late_morning"],
     "timezone": "Asia/Calcutta",
     "priority": "medium",
     "deadline": null,
-    "missing_fields": ["duration_minutes"]
+    "missing_fields": []
   },
   "expected_outcome": {
     "thread_id": "t_medium_1",
-    "final_resolution": "ask_for_missing_info"
+    "final_resolution": "book_meeting",
+    "proposed_start": "2026-04-04T11:30:00+05:30",
+    "required_calendar_views": ["priya", "karan"]
   },
   "policies": {
-    "non_movable_priorities": ["critical", "high"]
+    "non_movable_priorities": ["critical", "high"],
+    "business_hours": {"start": "09:00", "end": "18:00"},
+    "policy_hints": [
+      "If a required meeting detail is missing, ask for clarification before booking.",
+      "Protected customer-facing events should not be moved automatically."
+    ]
+  },
+  "follow_up_reply": {
+    "sender": "nina@acme.example",
+    "sent_at": "2026-04-03T16:42:00+05:30",
+    "body": "30 minutes is enough. If 10:00 is blocked, 11:30 works for both of them."
   }
 }

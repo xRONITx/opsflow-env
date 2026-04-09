@@ -14,6 +14,8 @@ def reward_for_correct_progress(kind: str) -> float:
         "extract_constraints": 0.15,
         "view_calendar": 0.10,
         "detect_conflict": 0.10,
+        "clarification_reply": 0.12,
+        "reschedule_meeting": 0.12,
         "final_resolution": 0.25,
         "archive_thread": 0.05,
     }

@@ -1,0 +1,109 @@
+{
+  "task_id": "hard_reschedule_internal_sync",
+  "difficulty": "hard",
+  "objective": "Reschedule a movable internal sync so an urgent demo-prep meeting can happen at the only viable pre-demo slot.",
+  "max_steps": 12,
+  "ideal_steps": 8,
+  "participants": {
+    "anika_ops": "Asia/Calcutta",
+    "suraj_eng": "Asia/Calcutta",
+    "mehul_pm": "Asia/Calcutta"
+  },
+  "inbox_threads": [
+    {
+      "thread_id": "t_reschedule_1",
+      "subject": "Urgent demo prep at 10:00 on 2026-04-08",
+      "sender": "anika.ops@acme.example",
+      "received_at": "2026-04-07T17:40:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "high",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "anika.ops@acme.example",
+          "sent_at": "2026-04-07T17:40:00+05:30",
+          "body": "Need a 30-minute demo prep sync with Anika Ops, Suraj, and Mehul at 10:00 on 2026-04-08 before the 10:30 customer demo. If Suraj's internal sync can move, please do that."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_reschedule_2",
+      "subject": "Next week retrospective",
+      "sender": "pm.office@acme.example",
+      "received_at": "2026-04-07T14:00:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "low",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "pm.office@acme.example",
+          "sent_at": "2026-04-07T14:00:00+05:30",
+          "body": "Please schedule the retrospective sometime next week."
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "anika_ops": [
+      {
+        "event_id": "anika_customer_demo",
+        "title": "Customer Demo",
+        "start": "2026-04-08T10:30:00+05:30",
+        "end": "2026-04-08T11:00:00+05:30",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["anika_ops"]
+      }
+    ],
+    "suraj_eng": [
+      {
+        "event_id": "suraj_team_sync",
+        "title": "Team Sync",
+        "start": "2026-04-08T10:00:00+05:30",
+        "end": "2026-04-08T10:30:00+05:30",
+        "priority": "medium",
+        "protected": false,
+        "attendees": ["suraj_eng"]
+      }
+    ],
+    "mehul_pm": [
+      {
+        "event_id": "mehul_demo_notes",
+        "title": "Demo Notes Review",
+        "start": "2026-04-08T10:30:00+05:30",
+        "end": "2026-04-08T11:00:00+05:30",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["mehul_pm"]
+      }
+    ]
+  },
+  "gold_constraints": {
+    "request_type": "schedule_meeting",
+    "attendees": ["anika_ops", "suraj_eng", "mehul_pm"],
+    "duration_minutes": 30,
+    "preferred_dates": ["2026-04-08"],
+    "preferred_time_ranges": ["10:00"],
+    "timezone": "Asia/Calcutta",
+    "priority": "high",
+    "deadline": "2026-04-08T10:30:00+05:30",
+    "missing_fields": []
+  },
+  "expected_outcome": {
+    "thread_id": "t_reschedule_1",
+    "final_resolution": "book_meeting",
+    "proposed_start": "2026-04-08T10:00:00+05:30",
+    "required_calendar_views": ["anika_ops", "suraj_eng", "mehul_pm"],
+    "required_reschedule_event": "suraj_team_sync",
+    "required_reschedule_start": "2026-04-08T10:30:00+05:30"
+  },
+  "policies": {
+    "non_movable_priorities": ["critical", "high"],
+    "business_hours": {"start": "09:00", "end": "18:00"},
+    "policy_hints": [
+      "Urgent customer-facing preparation takes priority over medium-priority internal syncs.",
+      "Only reschedule events that are not protected and do not have protected priorities."
+    ]
+  }
+}
+

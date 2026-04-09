@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 
-from opsflow_env.graders import grade_task
+from opsflow_env.graders import grade_task_breakdown
 from opsflow_env.models import (
     CalendarView,
     EmailThreadView,
@@ -15,8 +16,8 @@ from opsflow_env.models import (
     TaskDefinition,
 )
 from opsflow_env.rewards import invalid_action_penalty, loop_penalty, reward_for_correct_progress
-from opsflow_env.rules import detect_conflicts, is_reschedule_allowed
-from opsflow_env.tasks import load_all_tasks, load_task
+from opsflow_env.rules import detect_conflicts, find_event, is_reschedule_allowed, move_event, slot_respects_business_hours
+from opsflow_env.tasks import load_all_tasks
 
 
 class OpsFlowEnv:
@@ -31,7 +32,7 @@ class OpsFlowEnv:
 
     def reset(self, task_id: str | None = None) -> StepResult:
         chosen = task_id or self._task_order[0]
-        self._current_task = deepcopy(load_task(chosen))
+        self._current_task = deepcopy(self._tasks[chosen])
         self._state = OpsFlowState(
             task_id=self._current_task.task_id,
             difficulty=self._current_task.difficulty,
@@ -44,7 +45,7 @@ class OpsFlowEnv:
             observation=observation,
             reward=0.0,
             done=False,
-            info={"task_id": chosen, "score": 0.0},
+            info={"task_id": chosen, "score": 0.0, "score_breakdown": {}},
         )
 
     def state(self) -> OpsFlowState:
@@ -64,7 +65,11 @@ class OpsFlowEnv:
                 observation=self._build_observation(),
                 reward=0.0,
                 done=True,
-                info={"message": "Episode already completed.", "score": state.score},
+                info={
+                    "message": "Episode already completed.",
+                    "score": state.score,
+                    "score_breakdown": state.score_breakdown,
+                },
             )
 
         state.step_count += 1
@@ -91,7 +96,8 @@ class OpsFlowEnv:
             state.last_action_result = (state.last_action_result or "") + " Max steps reached."
 
         if state.done:
-            state.score = grade_task(task, state)
+            state.score_breakdown = grade_task_breakdown(task, state)
+            state.score = state.score_breakdown["total"]
 
         observation = self._build_observation()
         return StepResult(
@@ -100,6 +106,7 @@ class OpsFlowEnv:
             done=state.done,
             info={
                 "score": state.score,
+                "score_breakdown": state.score_breakdown,
                 "final_resolution": state.final_resolution,
                 "pending_conflicts": [conflict.model_dump() for conflict in state.pending_conflicts],
             },
@@ -157,6 +164,7 @@ class OpsFlowEnv:
         if thread is None or not action.category:
             return invalid_action_penalty()
 
+        state.classified_threads[thread.thread_id] = action.category
         state.last_action_result = f"Classified {thread.thread_id} as {action.category}."
         return reward_for_correct_progress("classify_thread") if action.category == thread.category else 0.0
 
@@ -167,6 +175,7 @@ class OpsFlowEnv:
         if thread is None or not action.priority:
             return invalid_action_penalty()
 
+        state.thread_priorities[thread.thread_id] = action.priority
         state.known_constraints.priority = action.priority
         state.last_action_result = f"Set priority for {thread.thread_id} to {action.priority}."
         return reward_for_correct_progress("set_priority") if action.priority == thread.suggested_priority else 0.0
@@ -176,7 +185,9 @@ class OpsFlowEnv:
         task = self._current_task
         assert state is not None and task is not None
         thread = self._require_selected_thread(action.thread_id)
-        if thread is None:
+        if thread is None or not action.extracted_fields:
+            state.last_action_error = True
+            state.last_action_result = "extract_constraints requires extracted_fields."
             return invalid_action_penalty()
 
         extracted = action.extracted_fields
@@ -187,30 +198,40 @@ class OpsFlowEnv:
             preferred_dates=list(extracted.get("preferred_dates", [])),
             preferred_time_ranges=list(extracted.get("preferred_time_ranges", [])),
             timezone=extracted.get("timezone"),
-            priority=state.known_constraints.priority or extracted.get("priority"),
+            priority=extracted.get("priority") or state.thread_priorities.get(thread.thread_id) or state.known_constraints.priority,
             deadline=extracted.get("deadline"),
             missing_fields=list(extracted.get("missing_fields", [])),
         )
 
-        score = 0.0
         gold = task.gold_constraints
+        matched = 0
         if sorted(state.known_constraints.attendees) == sorted(gold.get("attendees", [])):
-            score += 0.05
+            matched += 1
         if state.known_constraints.duration_minutes == gold.get("duration_minutes"):
-            score += 0.05
+            matched += 1
         if state.known_constraints.timezone == gold.get("timezone"):
-            score += 0.025
+            matched += 1
+        if sorted(state.known_constraints.preferred_dates) == sorted(gold.get("preferred_dates", [])):
+            matched += 1
         if sorted(state.known_constraints.missing_fields) == sorted(gold.get("missing_fields", [])):
-            score += 0.025
+            matched += 1
+
         state.last_action_result = f"Extracted constraints for {thread.thread_id}."
-        return reward_for_correct_progress("extract_constraints") + score
+        return reward_for_correct_progress("extract_constraints") + round(0.05 * matched / 5, 3)
 
     def _handle_view_calendar(self, action: OpsFlowAction) -> float:
         state = self._state
-        assert state is not None
+        task = self._current_task
+        assert state is not None and task is not None
         if not action.participant_ids:
             state.last_action_error = True
             state.last_action_result = "view_calendar requires participant_ids."
+            return invalid_action_penalty()
+
+        unknown = [participant for participant in action.participant_ids if participant not in task.participants]
+        if unknown:
+            state.last_action_error = True
+            state.last_action_result = f"Unknown participants: {', '.join(unknown)}."
             return invalid_action_penalty()
 
         for participant in action.participant_ids:
@@ -221,12 +242,23 @@ class OpsFlowEnv:
 
     def _handle_ask_for_missing_info(self, action: OpsFlowAction) -> float:
         state = self._state
-        assert state is not None
+        task = self._current_task
+        assert state is not None and task is not None
 
         if not state.known_constraints.missing_fields:
             state.last_action_error = True
             state.last_action_result = "No missing fields detected."
             return invalid_action_penalty()
+
+        if task.follow_up_reply is not None and not state.clarification_response_delivered:
+            thread = self._require_selected_thread(action.thread_id)
+            if thread is None:
+                return invalid_action_penalty()
+            thread.messages.append(deepcopy(task.follow_up_reply))
+            state.clarification_requested = True
+            state.clarification_response_delivered = True
+            state.last_action_result = "Requested clarification and received a follow-up reply."
+            return reward_for_correct_progress("clarification_reply")
 
         state.clarification_requested = True
         state.final_resolution = "ask_for_missing_info"
@@ -236,7 +268,8 @@ class OpsFlowEnv:
 
     def _handle_propose_slot(self, action: OpsFlowAction) -> float:
         state = self._state
-        assert state is not None
+        task = self._current_task
+        assert state is not None and task is not None
         participants = action.participant_ids or state.known_constraints.attendees
         duration = action.duration_minutes or state.known_constraints.duration_minutes
         if not action.proposed_start or not participants or not duration:
@@ -244,7 +277,12 @@ class OpsFlowEnv:
             state.last_action_result = "propose_slot requires proposed_start, participants, and duration."
             return invalid_action_penalty()
 
-        conflicts = detect_conflicts(self._current_task, participants, action.proposed_start, duration)  # type: ignore[arg-type]
+        if not slot_respects_business_hours(task, participants, action.proposed_start, duration):
+            state.last_action_error = True
+            state.last_action_result = "Proposed slot violates business hours."
+            return -0.10
+
+        conflicts = detect_conflicts(task, participants, action.proposed_start, duration)
         state.pending_conflicts = conflicts
         if conflicts:
             state.last_action_result = "Proposed slot has conflicts."
@@ -262,6 +300,16 @@ class OpsFlowEnv:
             state.last_action_error = True
             state.last_action_result = "book_meeting requires start, participants, and duration."
             return invalid_action_penalty()
+
+        if state.known_constraints.missing_fields:
+            state.last_action_error = True
+            state.last_action_result = "Cannot book while required fields are still missing."
+            return invalid_action_penalty()
+
+        if not slot_respects_business_hours(task, participants, action.proposed_start, duration):
+            state.last_action_error = True
+            state.last_action_result = "Cannot book outside business hours."
+            return -0.15
 
         conflicts = detect_conflicts(task, participants, action.proposed_start, duration)
         state.pending_conflicts = conflicts
@@ -283,23 +331,55 @@ class OpsFlowEnv:
 
     def _handle_reschedule_meeting(self, action: OpsFlowAction) -> float:
         state = self._state
-        assert state is not None
+        task = self._current_task
+        assert state is not None and task is not None
         if not action.target_event_id or not action.proposed_start:
             state.last_action_error = True
             state.last_action_result = "reschedule_meeting requires target_event_id and proposed_start."
             return invalid_action_penalty()
 
-        if not is_reschedule_allowed(self._current_task, action.target_event_id):  # type: ignore[arg-type]
+        if not is_reschedule_allowed(task, action.target_event_id):
             state.last_action_error = True
             state.last_action_result = "Target event is protected and cannot be rescheduled."
             return -0.20
 
+        event = find_event(task, action.target_event_id)
+        if event is None:
+            state.last_action_error = True
+            state.last_action_result = f"Unknown target_event_id={action.target_event_id}."
+            return invalid_action_penalty()
+
+        original_start = event.start
+        original_end = event.end
+        duration = int((datetime.fromisoformat(original_end) - datetime.fromisoformat(original_start)).total_seconds() // 60)
+        event_participants = event.attendees or [participant for participant, events in task.calendars.items() if any(item.event_id == event.event_id for item in events)]
+
+        if not slot_respects_business_hours(task, event_participants, action.proposed_start, duration):
+            state.last_action_error = True
+            state.last_action_result = "Rescheduled slot violates business hours."
+            return invalid_action_penalty()
+
+        move_event(task, action.target_event_id, action.proposed_start)
+        conflicts = [
+            conflict
+            for conflict in detect_conflicts(task, event_participants, action.proposed_start, duration)
+            if conflict.conflicting_event_id != action.target_event_id
+        ]
+        if conflicts:
+            event.start = original_start
+            event.end = original_end
+            state.pending_conflicts = conflicts
+            state.last_action_error = True
+            state.last_action_result = "Rescheduled event still conflicts with another meeting."
+            return invalid_action_penalty()
+
+        state.pending_conflicts = []
         state.rescheduled_event = {
             "target_event_id": action.target_event_id,
             "new_start": action.proposed_start,
         }
         state.last_action_result = f"Rescheduled {action.target_event_id}."
-        return 0.1
+        return reward_for_correct_progress("reschedule_meeting")
 
     def _handle_decline_request(self, action: OpsFlowAction) -> float:
         state = self._state
@@ -307,7 +387,7 @@ class OpsFlowEnv:
         state.final_resolution = "decline_request"
         state.done = True
         state.last_action_result = "Declined request."
-        return 0.0
+        return reward_for_correct_progress("final_resolution")
 
     def _handle_escalate_request(self, action: OpsFlowAction) -> float:
         state = self._state
@@ -347,6 +427,7 @@ class OpsFlowEnv:
                 subject=thread.subject,
                 sender=thread.sender,
                 received_at=thread.received_at,
+                preview=thread.messages[-1].body[:120] if thread.messages else None,
                 is_opened=thread.thread_id in state.opened_threads,
                 is_archived=thread.thread_id in state.archived_threads,
             )
@@ -379,6 +460,8 @@ class OpsFlowEnv:
             step_count=state.step_count,
             max_steps=state.max_steps,
             inbox_summary=inbox_summary,
+            participant_directory=task.participants,
+            policy_hints=list(task.policies.get("policy_hints", [])),
             selected_thread_id=state.selected_thread_id,
             selected_thread=selected_thread,
             known_constraints=state.known_constraints,
@@ -388,3 +471,5 @@ class OpsFlowEnv:
             last_action_error=state.last_action_error,
             done=state.done,
         )
+
+

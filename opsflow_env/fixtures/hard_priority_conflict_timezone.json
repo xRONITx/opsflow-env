@@ -3,6 +3,7 @@
   "difficulty": "hard",
   "objective": "Resolve the urgent APAC launch-readiness request while respecting protected events, timezones, and policy constraints.",
   "max_steps": 12,
+  "ideal_steps": 7,
   "participants": {
     "vp_lex": "Asia/Singapore",
     "maya_ops": "Asia/Calcutta",
@@ -11,7 +12,7 @@
   "inbox_threads": [
     {
       "thread_id": "t_hard_1",
-      "subject": "Urgent: launch-readiness sync before tomorrow",
+      "subject": "Urgent: launch-readiness sync on 2026-04-07",
       "sender": "jun.pm@acme.example",
       "received_at": "2026-04-06T18:15:00+08:00",
       "category": "meeting_request",
@@ -21,7 +22,7 @@
         {
           "sender": "jun.pm@acme.example",
           "sent_at": "2026-04-06T18:15:00+08:00",
-          "body": "Need a 30-minute launch-readiness sync with VP Lex and Maya Ops before tomorrow noon Singapore time. Please prioritize this."
+          "body": "Need a 30-minute launch-readiness sync with VP Lex, Maya Ops, and Jun PM on 2026-04-07 before 12:00 Singapore time. Please prioritize this."
         },
         {
           "sender": "chief.of.staff@acme.example",
@@ -32,6 +33,22 @@
     },
     {
       "thread_id": "t_hard_2",
+      "subject": "Vendor check-in next week",
+      "sender": "ops.vendor@acme.example",
+      "received_at": "2026-04-06T15:30:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "low",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "ops.vendor@acme.example",
+          "sent_at": "2026-04-06T15:30:00+05:30",
+          "body": "When there is time, can we plan a vendor check-in for next week?"
+        }
+      ]
+    },
+    {
+      "thread_id": "t_hard_3",
       "subject": "Travel receipt reminder",
       "sender": "finance@acme.example",
       "received_at": "2026-04-06T12:00:00+05:30",
@@ -100,6 +117,13 @@
     "required_calendar_views": ["jun_pm", "maya_ops", "vp_lex"]
   },
   "policies": {
-    "non_movable_priorities": ["critical", "high"]
+    "non_movable_priorities": ["critical", "high"],
+    "business_hours": {"start": "08:30", "end": "18:00"},
+    "policy_hints": [
+      "Protected executive and customer-facing blocks cannot be moved automatically.",
+      "Respect local business hours for every participant."
+    ]
   }
 }
+
+

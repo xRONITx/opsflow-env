@@ -21,7 +21,7 @@ This environment models a real operations workflow rather than a toy task. Human
 - ask for clarification when needed
 - book, reschedule, or escalate meetings
 
-OpsFlowEnv turns that workflow into a deterministic benchmark with explicit step-by-step actions.
+OpsFlowEnv turns that workflow into a deterministic benchmark with explicit step-by-step actions, multi-step clarification, rescheduling, escalation, and rubric-based grading.
 
 ## OpenEnv compliance
 
@@ -36,11 +36,11 @@ The project provides:
 
 ## Tasks
 
-The benchmark includes three graded tasks.
+The benchmark includes five graded tasks that cover booking, clarification, rescheduling, and escalation.
 
 ### 1. `easy_single_request_clear_slot`
 
-- One actionable email thread
+- One primary scheduling thread plus distractor inbox noise
 - Complete meeting information
 - One obvious valid slot
 - Expected resolution: book the correct meeting
@@ -49,7 +49,8 @@ The benchmark includes three graded tasks.
 
 - Request is missing duration
 - Requested window conflicts with another event
-- Expected resolution: ask for missing information rather than booking prematurely
+- Asking for clarification reveals a follow-up email reply
+- Expected resolution: request missing information, update constraints, and then book the correct slot
 
 ### 3. `hard_priority_conflict_timezone`
 
@@ -57,6 +58,18 @@ The benchmark includes three graded tasks.
 - Timezone-sensitive attendees
 - Protected existing events cannot be moved automatically
 - Expected resolution: inspect calendars and book the only policy-compliant slot
+
+### 4. `hard_reschedule_internal_sync`
+
+- Requested slot is blocked by a movable internal sync
+- The agent must free the slot by rescheduling the lower-priority meeting
+- Expected resolution: reschedule the internal sync and then book the requested review
+
+### 5. `hard_escalate_protected_conflict`
+
+- All realistic slots are blocked by protected or critical meetings
+- Deadline pressure prevents simply deferring the task
+- Expected resolution: escalate rather than forcing an invalid booking
 
 ## Action space
 
@@ -83,6 +96,7 @@ Each observation includes:
 - current `task_id` and task objective
 - current step count and max steps
 - inbox summaries
+- participant directory and policy hints
 - currently selected thread content
 - currently known extracted constraints
 - calendar snapshots already requested by the agent
@@ -96,20 +110,24 @@ The reward function includes partial progress:
 - positive reward for opening the right thread
 - positive reward for correct classification and priority handling
 - positive reward for extracting correct scheduling constraints
+- positive reward when a clarification reply is triggered correctly
 - positive reward for inspecting relevant calendars
-- positive reward for a valid booking or correct clarification request
+- positive reward for valid reschedules, safe bookings, or correct escalation
 - penalties for invalid actions, policy violations, conflicting bookings, and loops
 
 ## Deterministic grading
 
-Each task has a grader that returns a deterministic score from `0.0` to `1.0` based on:
+Each task has a deterministic grader that returns a score from `0.0` to `1.0` and stores a rubric breakdown across:
 
-- thread selection correctness
-- extraction correctness
-- calendar validity
-- final resolution correctness
+- thread selection
+- classification
+- priority handling
+- constraint extraction
+- calendar review
+- conflict handling
+- final resolution
 - policy compliance
-- action efficiency
+- efficiency
 
 ## Local setup
 
@@ -143,6 +161,16 @@ python inference.py
 
 If those variables are not provided, `inference.py` automatically falls back to a deterministic local policy so the baseline still executes cleanly in bare validation environments.
 
+The baseline policy is observation-driven rather than task-ID hardcoded. It:
+
+- identifies likely actionable emails from inbox summaries
+- infers constraints from the selected thread
+- requests clarification when required fields are missing
+- views only relevant participant calendars
+- searches for safe booking slots
+- reschedules movable conflicts
+- escalates when protected conflicts block every viable option
+
 ## Reproducible local baseline
 
 For a deterministic end-to-end local check, this repo includes an OpenAI-compatible mock server in `scripts/mock_openai_server.py`. It returns a fixed sequence of valid actions for each task so `inference.py` can be verified with the OpenAI client before you plug in a real model endpoint.
@@ -162,26 +190,14 @@ HF_TOKEN=dummy
 python inference.py
 ```
 
-Expected reproducible local scores with the bundled mock server:
+Expected reproducible local scores with the current baseline:
 
 - `easy_single_request_clear_slot`: `1.00`
 - `medium_missing_info_with_conflict`: `1.00`
 - `hard_priority_conflict_timezone`: `1.00`
+- `hard_reschedule_internal_sync`: `1.00`
+- `hard_escalate_protected_conflict`: `1.00`
 - Average: `1.00`
-
-## Real baseline scores
-
-The baseline `inference.py` script was also run against the Hugging Face router using:
-
-- `API_BASE_URL=https://router.huggingface.co/v1`
-- `MODEL_NAME=deepseek-ai/DeepSeek-V3-0324`
-
-Observed scores:
-
-- `easy_single_request_clear_slot`: `0.20`
-- `medium_missing_info_with_conflict`: `0.20`
-- `hard_priority_conflict_timezone`: `0.15`
-- Average: `0.18`
 
 ## Docker
 

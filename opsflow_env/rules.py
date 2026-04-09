@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from opsflow_env.models import CalendarEvent, ConflictView, TaskDefinition
 
@@ -14,6 +15,7 @@ def end_time(start_iso: str, duration_minutes: int) -> datetime:
 
 
 def detect_conflicts(task: TaskDefinition, participants: list[str], start_iso: str, duration_minutes: int) -> list[ConflictView]:
+    proposed_start = parse_dt(start_iso)
     proposed_end = end_time(start_iso, duration_minutes)
     conflicts: list[ConflictView] = []
 
@@ -21,7 +23,7 @@ def detect_conflicts(task: TaskDefinition, participants: list[str], start_iso: s
         for event in task.calendars.get(participant, []):
             event_start = parse_dt(event.start)
             event_end = parse_dt(event.end)
-            if parse_dt(start_iso) < event_end and proposed_end > event_start:
+            if proposed_start < event_end and proposed_end > event_start:
                 conflicts.append(
                     ConflictView(
                         participant=participant,
@@ -42,6 +44,14 @@ def find_event(task: TaskDefinition, event_id: str) -> CalendarEvent | None:
     return None
 
 
+def event_owner(task: TaskDefinition, event_id: str) -> str | None:
+    for participant, events in task.calendars.items():
+        for event in events:
+            if event.event_id == event_id:
+                return participant
+    return None
+
+
 def is_reschedule_allowed(task: TaskDefinition, event_id: str) -> bool:
     event = find_event(task, event_id)
     if event is None:
@@ -50,3 +60,34 @@ def is_reschedule_allowed(task: TaskDefinition, event_id: str) -> bool:
         return False
     disallowed = set(task.policies.get("non_movable_priorities", []))
     return event.priority not in disallowed
+
+
+def slot_respects_business_hours(task: TaskDefinition, participants: list[str], start_iso: str, duration_minutes: int) -> bool:
+    business_hours = task.policies.get("business_hours", {"start": "09:00", "end": "18:00"})
+    window_start = time.fromisoformat(business_hours.get("start", "09:00"))
+    window_end = time.fromisoformat(business_hours.get("end", "18:00"))
+    proposed_start = parse_dt(start_iso)
+    proposed_end = end_time(start_iso, duration_minutes)
+
+    for participant in participants:
+        timezone_name = task.participants.get(participant)
+        if timezone_name is None:
+            return False
+        participant_zone = ZoneInfo(timezone_name)
+        local_start = proposed_start.astimezone(participant_zone)
+        local_end = proposed_end.astimezone(participant_zone)
+        if local_start.timetz().replace(tzinfo=None) < window_start:
+            return False
+        if local_end.timetz().replace(tzinfo=None) > window_end:
+            return False
+    return True
+
+
+def move_event(task: TaskDefinition, event_id: str, new_start_iso: str) -> CalendarEvent | None:
+    event = find_event(task, event_id)
+    if event is None:
+        return None
+    duration_minutes = int((parse_dt(event.end) - parse_dt(event.start)).total_seconds() // 60)
+    event.start = new_start_iso
+    event.end = end_time(new_start_iso, duration_minutes).isoformat()
+    return event

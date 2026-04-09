@@ -1,8 +1,9 @@
 {
   "task_id": "easy_single_request_clear_slot",
   "difficulty": "easy",
-  "objective": "Resolve the single actionable scheduling request and book the correct conflict-free launch blockers sync.",
+  "objective": "Resolve the highest-priority scheduling request in the inbox and book the correct conflict-free launch blockers sync.",
   "max_steps": 8,
+  "ideal_steps": 6,
   "participants": {
     "riya": "Asia/Calcutta",
     "aman": "Asia/Calcutta"
@@ -10,7 +11,7 @@
   "inbox_threads": [
     {
       "thread_id": "t_easy_1",
-      "subject": "Launch blockers sync tomorrow afternoon",
+      "subject": "Launch blockers sync on 2026-04-02",
       "sender": "meera@acme.example",
       "received_at": "2026-04-01T09:10:00+05:30",
       "category": "meeting_request",
@@ -20,12 +21,28 @@
         {
           "sender": "meera@acme.example",
           "sent_at": "2026-04-01T09:10:00+05:30",
-          "body": "Please set up a 30-minute sync tomorrow afternoon with Riya and Aman to review launch blockers. High priority."
+          "body": "Please set up a 30-minute sync on 2026-04-02 in the afternoon with Riya and Aman to review launch blockers. High priority."
         }
       ]
     },
     {
       "thread_id": "t_easy_2",
+      "subject": "Welcome lunch next week",
+      "sender": "peopleops@acme.example",
+      "received_at": "2026-04-01T08:45:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "low",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "peopleops@acme.example",
+          "sent_at": "2026-04-01T08:45:00+05:30",
+          "body": "When you get time, please schedule a casual team lunch for next week. No rush."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_easy_3",
       "subject": "Weekly newsletter",
       "sender": "news@acme.example",
       "received_at": "2026-04-01T08:00:00+05:30",
@@ -79,9 +96,15 @@
   "expected_outcome": {
     "thread_id": "t_easy_1",
     "final_resolution": "book_meeting",
-    "proposed_start": "2026-04-02T15:00:00+05:30"
+    "proposed_start": "2026-04-02T15:00:00+05:30",
+    "required_calendar_views": ["riya", "aman"]
   },
   "policies": {
-    "non_movable_priorities": ["critical"]
+    "non_movable_priorities": ["critical"],
+    "business_hours": {"start": "09:00", "end": "18:00"},
+    "policy_hints": [
+      "Prioritize urgent operational requests over non-urgent internal scheduling.",
+      "Only book meetings inside business hours."
+    ]
   }
 }

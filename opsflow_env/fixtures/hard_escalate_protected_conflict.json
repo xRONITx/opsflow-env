@@ -1,0 +1,115 @@
+{
+  "task_id": "hard_escalate_protected_conflict",
+  "difficulty": "hard",
+  "objective": "Escalate when no policy-compliant slot exists before the deadline because every blocking event is protected.",
+  "max_steps": 12,
+  "ideal_steps": 7,
+  "participants": {
+    "cto_ira": "Asia/Singapore",
+    "lina_sales": "Asia/Singapore",
+    "devon_ops": "Asia/Calcutta"
+  },
+  "inbox_threads": [
+    {
+      "thread_id": "t_escalate_1",
+      "subject": "Urgent exec sync before 11:00 on 2026-04-09",
+      "sender": "chief.of.staff@acme.example",
+      "received_at": "2026-04-08T18:05:00+08:00",
+      "category": "meeting_request",
+      "suggested_priority": "high",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "chief.of.staff@acme.example",
+          "sent_at": "2026-04-08T18:05:00+08:00",
+          "body": "Need a 30-minute exec sync with CTO Ira, Lina Sales, and Devon Ops on 2026-04-09 before 11:00 Singapore time. Do not move protected leadership blocks without approval."
+        }
+      ]
+    },
+    {
+      "thread_id": "t_escalate_2",
+      "subject": "Schedule intern orientation later this month",
+      "sender": "peopleops@acme.example",
+      "received_at": "2026-04-08T12:00:00+05:30",
+      "category": "meeting_request",
+      "suggested_priority": "low",
+      "actionable": true,
+      "messages": [
+        {
+          "sender": "peopleops@acme.example",
+          "sent_at": "2026-04-08T12:00:00+05:30",
+          "body": "Please arrange intern orientation sometime later this month."
+        }
+      ]
+    }
+  ],
+  "calendars": {
+    "cto_ira": [
+      {
+        "event_id": "ira_board_sync",
+        "title": "Board Sync",
+        "start": "2026-04-09T09:00:00+08:00",
+        "end": "2026-04-09T10:00:00+08:00",
+        "priority": "critical",
+        "protected": true,
+        "attendees": ["cto_ira"]
+      },
+      {
+        "event_id": "ira_exec_review",
+        "title": "Executive Review",
+        "start": "2026-04-09T10:00:00+08:00",
+        "end": "2026-04-09T10:30:00+08:00",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["cto_ira"]
+      }
+    ],
+    "lina_sales": [
+      {
+        "event_id": "lina_customer_escalation",
+        "title": "Customer Escalation",
+        "start": "2026-04-09T09:30:00+08:00",
+        "end": "2026-04-09T10:30:00+08:00",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["lina_sales"]
+      }
+    ],
+    "devon_ops": [
+      {
+        "event_id": "devon_ops_review",
+        "title": "Ops Review",
+        "start": "2026-04-09T08:30:00+05:30",
+        "end": "2026-04-09T09:30:00+05:30",
+        "priority": "high",
+        "protected": true,
+        "attendees": ["devon_ops"]
+      }
+    ]
+  },
+  "gold_constraints": {
+    "request_type": "schedule_meeting",
+    "attendees": ["cto_ira", "lina_sales", "devon_ops"],
+    "duration_minutes": 30,
+    "preferred_dates": ["2026-04-09"],
+    "preferred_time_ranges": ["before_noon_singapore"],
+    "timezone": "Asia/Singapore",
+    "priority": "high",
+    "deadline": "2026-04-09T11:00:00+08:00",
+    "missing_fields": []
+  },
+  "expected_outcome": {
+    "thread_id": "t_escalate_1",
+    "final_resolution": "escalate_request",
+    "required_calendar_views": ["cto_ira", "devon_ops", "lina_sales"]
+  },
+  "policies": {
+    "non_movable_priorities": ["critical", "high"],
+    "business_hours": {"start": "08:30", "end": "18:00"},
+    "policy_hints": [
+      "If every feasible slot is blocked by protected events, escalate instead of forcing a booking.",
+      "Do not move protected leadership or customer-facing events automatically."
+    ]
+  }
+}
+

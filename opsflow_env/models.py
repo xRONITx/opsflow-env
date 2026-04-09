@@ -44,6 +44,7 @@ class InboxItemSummary(BaseModel):
     subject: str
     sender: str
     received_at: str
+    preview: Optional[str] = None
     is_opened: bool = False
     is_archived: bool = False
 
@@ -88,12 +89,14 @@ class TaskDefinition(BaseModel):
     difficulty: str
     objective: str
     max_steps: int
+    ideal_steps: int = 6
     inbox_threads: list[EmailThread]
     participants: dict[str, str]
     calendars: dict[str, list[CalendarEvent]]
     gold_constraints: dict[str, Any]
     expected_outcome: dict[str, Any]
     policies: dict[str, Any]
+    follow_up_reply: Optional[EmailMessage] = None
 
 
 class OpsFlowAction(BaseModel):
@@ -121,6 +124,8 @@ class OpsFlowObservation(BaseModel):
     step_count: int
     max_steps: int
     inbox_summary: list[InboxItemSummary]
+    participant_directory: dict[str, str] = Field(default_factory=dict)
+    policy_hints: list[str] = Field(default_factory=list)
     selected_thread_id: Optional[str] = None
     selected_thread: Optional[EmailThreadView] = None
     known_constraints: ExtractedConstraints
@@ -141,6 +146,8 @@ class OpsFlowState(BaseModel):
     opened_threads: list[str] = Field(default_factory=list)
     archived_threads: list[str] = Field(default_factory=list)
     viewed_calendars: list[str] = Field(default_factory=list)
+    classified_threads: dict[str, str] = Field(default_factory=dict)
+    thread_priorities: dict[str, str] = Field(default_factory=dict)
     known_constraints: ExtractedConstraints = Field(default_factory=ExtractedConstraints)
     action_history: list[dict[str, Any]] = Field(default_factory=list)
     pending_conflicts: list[ConflictView] = Field(default_factory=list)
@@ -148,8 +155,10 @@ class OpsFlowState(BaseModel):
     rescheduled_event: Optional[dict[str, Any]] = None
     final_resolution: Optional[str] = None
     clarification_requested: bool = False
+    clarification_response_delivered: bool = False
     escalated: bool = False
     score: float = 0.0
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
     done: bool = False
     last_action_result: Optional[str] = None
     last_action_error: bool = False
